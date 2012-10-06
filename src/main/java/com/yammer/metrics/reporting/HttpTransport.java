@@ -1,83 +1,62 @@
 package com.yammer.metrics.reporting;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.ByteArrayEntity;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.impl.conn.PoolingClientConnectionManager;
+import org.apache.http.util.EntityUtils;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.ning.http.client.AsyncHandler;
-import com.ning.http.client.AsyncHttpClient;
-import com.ning.http.client.AsyncHttpClient.BoundRequestBuilder;
-import com.ning.http.client.HttpResponseBodyPart;
-import com.ning.http.client.HttpResponseHeaders;
-import com.ning.http.client.HttpResponseStatus;
 
 public class HttpTransport implements Transport {
-  private final String apiKey;
-  private final AsyncHttpClient client;
-  private final String seriesUrl;
-  private static final Logger LOG = LoggerFactory
-      .getLogger(HttpTransport.class);
+    private final HttpClient client;
+    private final String seriesUrl;
 
-  public HttpTransport(String host, String apiKey) {
-    this.apiKey = apiKey;
-    this.client = new AsyncHttpClient();
-    this.seriesUrl = String.format("https://%s/api/v1/series?api_key=%s", host,
-        apiKey);
-  }
-
-  public static class HttpRequest implements Transport.Request {
-    private final BoundRequestBuilder requestBuilder;
-    private final ByteArrayOutputStream out;
-
-    public HttpRequest(HttpTransport transport, String apiKey,
-        BoundRequestBuilder requestBuilder) throws IOException {
-      this.requestBuilder = requestBuilder;
-      this.requestBuilder.addHeader("Content-Type", "application/json");
-      this.out = new ByteArrayOutputStream();
+    public HttpTransport(String host, String apiKey, String appKey) {
+        this.client = new DefaultHttpClient(new PoolingClientConnectionManager());
+        String url = String.format("https://%s/api/v1/series?api_key=%s", host, apiKey);
+        if (appKey!=null){
+        	url+="&application_key="+appKey;
+        }
+        this.seriesUrl=url;
     }
 
-    public OutputStream getBodyWriter() {
-      return out;
+    public HttpRequest prepare() throws IOException {
+        HttpPost post = new HttpPost(seriesUrl);
+        return new HttpRequest(client, post);
     }
 
-    public void send() throws Exception {
-      out.flush();
-      out.close();
-      requestBuilder.setBody(out.toByteArray())
-          .execute(new AsyncHandler<Void>() {
+    public static class HttpRequest implements Transport.Request {
+        private final HttpPost postRequest;
+        private final ByteArrayOutputStream out;
+        private final HttpClient requestClient;
 
-            public STATE onBodyPartReceived(HttpResponseBodyPart bp)
-                throws Exception {
-              return STATE.CONTINUE;
+        public HttpRequest(HttpClient requestClient, HttpPost postRequest) throws IOException {
+            this.requestClient = requestClient;
+            this.postRequest = postRequest;
+            this.postRequest.addHeader("Content-Type", "application/json");
+            this.out = new ByteArrayOutputStream();
+        }
+
+        public OutputStream getBodyWriter() {
+            return out;
+        }
+
+        public void send() throws Exception {
+            try {
+                out.flush();
+                out.close();
+                postRequest.setEntity(new ByteArrayEntity(out.toByteArray()));
+                HttpResponse response = requestClient.execute(postRequest);
+                EntityUtils.consumeQuietly(response.getEntity());
+            } finally {
+                postRequest.reset();    // We don't reuse the postRequest between metrics pushes - but this
             }
-
-            public Void onCompleted() throws Exception {
-              return null;
-            }
-
-            public STATE onHeadersReceived(HttpResponseHeaders headers)
-                throws Exception {
-              return STATE.CONTINUE;
-            }
-
-            public STATE onStatusReceived(HttpResponseStatus arg0)
-                throws Exception {
-              return STATE.CONTINUE;
-            }
-
-            public void onThrowable(Throwable t) {
-              LOG.error("Error Writing Datadog metrics", t);
-            }
-
-          }).get();
+        }
     }
-  }
-
-  public HttpRequest prepare() throws IOException {
-    BoundRequestBuilder builder = client.preparePost(seriesUrl);
-    return new HttpRequest(this, apiKey, builder);
-  }
 }

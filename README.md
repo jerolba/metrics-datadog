@@ -4,19 +4,18 @@ documentation pending
 
 ## Usage
 
-~~~scala
+~~~java
 import com.yammer.metrics.reporting.DatadogReporter
 
 ...
 
-DatadogReporter.enable(15, TimeUnit.SECONDS, myDatadogKey)
+DatadogReporter dd = new DatadogReporter(Metrics.defaultRegistry(), yourApiKey,yourAppKey,hostName);
+dd.start(40, TimeUnit.SECONDS);
+
 ~~~
 
-## Maven
 
-This repo is subject to change. Nuts!
-
-* Remote:   https://s3.amazonaws.com/maven.vistarmedia.com/maven/snapshots
-* Group:    com.vistarmedia
-* Artifact: metrics-datadog
-* Version:  0.0.8-SNAPSHOT
+##Thanks
+This project is a refactor and mix from:
+https://github.com/bazaarvoice/metrics-datadog
+https://github.com/vistarmedia/metrics-datadog

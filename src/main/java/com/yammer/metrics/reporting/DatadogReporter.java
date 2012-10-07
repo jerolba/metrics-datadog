@@ -51,7 +51,9 @@ public class DatadogReporter extends AbstractPollingReporter {
 			request = transport.prepare();
 			DatadogApi api = new DatadogApi(host, request.getBodyWriter());
 			api.startSerie();
-			vmReporter.pushVmMetrics(api, epoch);
+			if (printVmMetrics){
+				vmReporter.pushVmMetrics(api, epoch);
+			}
 			MetricsReporter metricsReporter = new MetricsReporter(api);
 			metricsReporter.pushRegularMetrics(metrics, epoch);
 			api.finishSerie();

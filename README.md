@@ -17,5 +17,7 @@ dd.start(40, TimeUnit.SECONDS);
 
 ##Thanks
 This project is a refactor and mix from:
+
 https://github.com/bazaarvoice/metrics-datadog
+
 https://github.com/vistarmedia/metrics-datadog

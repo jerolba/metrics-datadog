@@ -10,7 +10,7 @@ import com.yammer.metrics.reporting.DatadogReporter
 ...
 
 DatadogReporter dd = new DatadogReporter(Metrics.defaultRegistry(), yourApiKey,yourAppKey,hostName);
-dd.start(40, TimeUnit.SECONDS);
+dd.start(30, TimeUnit.SECONDS);
 
 ~~~
 
